@@ -9,12 +9,6 @@ import scala.concurrent.duration._
 import com.http.server.concurrent.SocketClient
 import akka.routing.RoundRobinRouter
 
-/**
- * http://queinnec.perso.enseeiht.fr/Ens/Chat/socket-java.html
- * http://defaut.developpez.com/tutoriel/java/serveur/multithread/
- * http://b.kostrzewa.free.fr/java/td-serveur/serveur.html
- * https://gist.github.com/fsarradin/6449549
- */
 class Server(port: Int) {
     private val serverSocket = new ServerSocket(port)
     private val socketHandler = ActorSystem("server").actorOf(props.withRouter(RoundRobinRouter(nrOfInstances = 2)), name)

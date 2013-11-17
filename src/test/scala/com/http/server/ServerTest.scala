@@ -27,7 +27,7 @@ class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll {
 
         val stop = System.currentTimeMillis()
 
-        println(s"time : ${stop - start}")
+        println(s"time elapsed for ${results.size} requests = ${stop - start}")
         (stop - start) should be < 500L
     }
 }
