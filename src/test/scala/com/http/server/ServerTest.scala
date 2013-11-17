@@ -2,28 +2,18 @@ package com.http.server
 
 import org.scalatest.{Matchers, BeforeAndAfterAll, FunSuite}
 import scala.io.Source
-import com.github.simplyscala.http.client.AsyncHttpClient
-import scala.concurrent.{Future, Await}
-import scala.concurrent.ExecutionContext.Implicits.global
-import org.scalatest.matchers.ShouldMatchers
-
 
 class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll {
-    //val server = new ServerNio(8080)
     val server = new Server(8080)
 
     override def beforeAll {
+        import scala.concurrent.ExecutionContext.Implicits.global
+        import scala.concurrent.Future
+
         Future { server.start() }
     }
 
-    override def afterAll {
-        server.stop()
-    }
-
-    ignore("ping server NIO") {
-        val response = Source.fromURL("http://localhost:8080").mkString
-        println(s"Response : $response")
-    }
+    override def afterAll { server.stop() }
 
     test("ping server") {
         val response = Source.fromURL("http://localhost:8080").mkString
@@ -33,11 +23,11 @@ class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll {
     test("ping server with 2 client") {
         val start = System.currentTimeMillis()
 
-        Source.fromURL("http://localhost:8080").mkString
-        Source.fromURL("http://localhost:8080").mkString
+        val results = (1 to 5).par.map { x => Source.fromURL("http://localhost:8080").mkString }
 
         val stop = System.currentTimeMillis()
 
-        (stop - start) should be < 200L
+        println(s"time : ${stop - start}")
+        (stop - start) should be < 500L
     }
 }

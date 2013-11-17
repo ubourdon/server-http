@@ -15,8 +15,8 @@ object ServerHttpBuild extends Build {
             scalaVersion := "2.10.2",
 
             libraryDependencies ++= Seq(
-                "org.scalatest"             %%  "scalatest"         % "2.0"     % "test",
-                "com.github.simplyscala"    %%  "http-client"       % "0.1"     % "test"
+                "com.typesafe.akka"         %% "akka-actor"         % "2.2.3"           ,
+                "org.scalatest"             %%  "scalatest"         % "2.0"     % "test"
             )
         )
     )
