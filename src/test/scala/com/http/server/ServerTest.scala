@@ -3,8 +3,9 @@ package com.http.server
 import org.scalatest.{Matchers, BeforeAndAfterAll, FunSuite}
 import scala.io.Source
 import java.io.FileNotFoundException
+import scala.concurrent.duration._
 
-class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll {
+class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll with DurationTestTools {
     val server = HttpServer.addContext(8080, "/") { request =>
         implicit def StringToBody(value: String) = Body(value)
 
@@ -30,19 +31,38 @@ class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll {
     }
 
     test("ping server with 2 client") {
-        val start = System.currentTimeMillis()
+        val (time, results) = mesureTimeExecutionOf {
+            (1 to 5).par.map { x => Source.fromURL("http://localhost:8080").mkString }
+        }
 
-        val results = (1 to 5).par.map { x => Source.fromURL("http://localhost:8080").mkString }
+        println(s"time elapsed for ${results.size} requests = $time")
 
-        val stop = System.currentTimeMillis()
-
-        println(s"time elapsed for ${results.size} requests = ${stop - start}")
-        (stop - start) should be < 500L
+        time shouldBeMinusThan (500 milliseconds)
     }
 
     test("test API") {
         Source.fromURL("http://localhost:8080").mkString should include ("YO")
         Source.fromURL("http://localhost:8080/otherPath").mkString should include ("TITI")
         the [FileNotFoundException] thrownBy Source.fromURL("http://localhost:8080/badPath").mkString should have message "http://localhost:8080/badPath"
+    }
+}
+
+trait DurationTestTools {
+    implicit def duration2DurationCompare(duration: Duration): DurationCompare = DurationCompare(duration)
+
+    case class DurationCompare(duration: Duration) {
+        def shouldBeMinusThan(expectedDuration: Duration) { assert(duration.compare(expectedDuration) < 0, s"$duration was not minus than $expectedDuration") }
+        def shouldBeMinusOrEqualThan(expectedDuration: Duration) { assert(duration.compare(expectedDuration) <= 0, s"$duration was not minus or equal than $expectedDuration") }
+        def shouldBeGreaterThan(expectedDuration: Duration) { assert(duration.compare(expectedDuration) > 0, s"$duration was not greater than $expectedDuration") }
+        def shouldBeGreaterOrEqualThan(expectedDuration: Duration) { assert(duration.compare(expectedDuration) >= 0, s"$duration was not greater or equal than $expectedDuration") }
+        def shouldBeEqualTo(expectedDuration: Duration) { assert(duration.compare(expectedDuration) == 0, s"$duration was not equal to $expectedDuration") }
+    }
+
+    def mesureTimeExecutionOf[T](toMesure: => T): (Duration, T) = {
+        val start = System.currentTimeMillis()
+        val result = toMesure
+        val stop = System.currentTimeMillis()
+
+        ((stop - start) milliseconds, result)
     }
 }
