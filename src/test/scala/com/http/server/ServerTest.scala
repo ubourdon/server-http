@@ -2,9 +2,18 @@ package com.http.server
 
 import org.scalatest.{Matchers, BeforeAndAfterAll, FunSuite}
 import scala.io.Source
+import java.io.FileNotFoundException
 
 class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll {
-    val server = new Server(8080)
+    val server = HttpServer.addContext(8080, "/") { request =>
+        implicit def StringToBody(value: String) = Body(value)
+
+        request.path match {
+            case "/" => Response("YO", 200)
+            case "/otherPath" => Response("TITI", 200)
+            case _ => Response("error", 404)
+        }
+    }
 
     override def beforeAll {
         import scala.concurrent.ExecutionContext.Implicits.global
@@ -29,5 +38,11 @@ class ServerTest extends FunSuite with Matchers with BeforeAndAfterAll {
 
         println(s"time elapsed for ${results.size} requests = ${stop - start}")
         (stop - start) should be < 500L
+    }
+
+    test("test API") {
+        Source.fromURL("http://localhost:8080").mkString should include ("YO")
+        Source.fromURL("http://localhost:8080/otherPath").mkString should include ("TITI")
+        the [FileNotFoundException] thrownBy Source.fromURL("http://localhost:8080/badPath").mkString should have message "http://localhost:8080/badPath"
     }
 }

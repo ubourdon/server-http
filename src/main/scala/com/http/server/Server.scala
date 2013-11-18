@@ -8,16 +8,29 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import com.http.server.concurrent.SocketClient
 import akka.routing.RoundRobinRouter
+import com.http.server.Server.{Path, Context, Code}
 
-class Server(port: Int) {
+object HttpServer {
+    def addContext(port: Int, path: Path)(action: Request => Response): Server = {
+        new Server(port, List((path, action)))
+    }
+}
+
+class Server(port: Int, contexts: List[Context]) {
     private val serverSocket = new ServerSocket(port)
-    private val socketHandler = ActorSystem("server").actorOf(props.withRouter(RoundRobinRouter(nrOfInstances = 2)), name)
+    private val socketHandler = ActorSystem("server").actorOf(props(contexts).withRouter(RoundRobinRouter(nrOfInstances = 2)), name)
+
 
     def start() {
         while(true) {
             val socket = serverSocket.accept()
             socketHandler ! SocketClient(socket)
         }
+    }
+
+    def stop() {
+        Await.result(gracefulStop(socketHandler, 1 seconds), 16 seconds)
+        serverSocket.close()
     }
 
     /*def start() {
@@ -41,13 +54,26 @@ class Server(port: Int) {
             socket.close()
         }
     }*/
-
-    def stop() {
-        Await.result(gracefulStop(socketHandler, 1 seconds), 16 seconds)
-        serverSocket.close()
-    }
 }
 
 object Server {
-    def main(args: Array[String]) { new Server(8080).start() }
+    type Context = (Path, Request => Response)
+    type Path = String
+    type Code = Int
+
+    def main(args: Array[String]) {
+        HttpServer.addContext(8080, "/") { request =>
+            implicit def StringToBody(value: String) = Body(value)
+
+            request.path match {
+                case "/" => Response("YO", 200)
+                case "/otherPath" => Response("TITI", 200)
+                case _ => Response("error", 404)
+            }
+        }.start()
+    }
 }
+
+case class Request(path: Path)
+case class Response(body: Body, code: Code)
+case class Body(value: String)
